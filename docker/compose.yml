@@ -1,0 +1,25 @@
+services:
+  caddy:
+    image: caddy:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    configs:
+      - source: caddy_config
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - ../public:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+
+configs:
+  caddy_config:
+    content: |
+      :80 {
+          root * /srv
+          file_server
+      }
+
+volumes:
+  caddy_data:
+  caddy_config:
