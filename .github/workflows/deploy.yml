@@ -1,0 +1,56 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  validate:
+    name: Validate Configuration & Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose -f docker/compose.yml config
+
+      - name: Check Essential Files
+        run: |
+          test -f public/index.html || { echo "public/index.html not found"; exit 1; }
+          test -f public/static/css/styles.css || { echo "public/static/css/styles.css not found"; exit 1; }
+          echo "All required files are present!"
+
+  deploy:
+    name: Deploy to VPS
+    needs: validate                  # <-- disesuaikan dengan nama job di atasnya
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Execute remote deployment commands via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            # 1. Masuk ke direktori project (otomatis mengikuti user yang login)
+            cd ~/app
+
+            # 2. Jika project belum pernah di-clone, clone repository:
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/${{ github.repository }}.git .
+            else
+              git fetch --all
+              git reset --hard origin/main
+            fi
+
+            # 3. Jalankan / restart aplikasi
+            docker compose down --remove-orphans
+            docker compose up -d --build
