@@ -2,7 +2,7 @@ services:
   caddy:
     image: caddy:latest
     ports:
-      - 8081:80"
+      - "8081:80"
     configs:
       - source: caddy_config
         target: /etc/caddy/Caddyfile
